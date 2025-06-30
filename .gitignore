@@ -1,0 +1,6 @@
+candidates/*
+scorecard.csv
+node_modules
+.DS_Store
+candidates.db
+.env
