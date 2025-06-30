@@ -1,18 +1,27 @@
 # Greenhouse AI Tooling
 
 ### Usage:
-GREENHOUSE_AUTH_KEY="MY-GH-KEY" ./greenhouse.js <command>
+
+Create a `.env` file with ANTHROPIC_API_KEY and GREENHOUSE_AUTH_KEY. The GREENHOUSE_AUTH_KEY must have Harbor and Candidates access.
+
+    ./greenhouse.js <command>
 
 
 ### Download candidates and resumes:
-GREENHOUSE_AUTH_KEY="MY-GH-KEY" ./greenhouse.js download --job-id 2423423
+
+    ./greenhouse.js download --job-id 2423423
 
 
 ### List
-GREENHOUSE_AUTH_KEY="MY-GH-KEY" ./greenhouse.js list
+
+    ./greenhouse.js list
 
 
 ### Rank
-GREENHOUSE_AUTH_KEY="MY-GH-KEY" ./greenhouse.js rank
 
-Outputs to candidates.csv for easy sharing!
+    ./greenhouse.js rank
+
+
+### Chat (Claude Code)
+
+    ./greenhouse.js chat
