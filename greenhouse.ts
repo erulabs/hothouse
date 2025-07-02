@@ -1,16 +1,24 @@
 #!./node_modules/.bin/tsx --env-file-if-exists=.env
 
-import { createWriteStream, readFileSync, mkdirSync } from "node:fs";
+import {
+	createWriteStream,
+	createReadStream,
+	readFileSync,
+	mkdirSync,
+} from "node:fs";
 import fs from "node:fs/promises";
 import { Readable } from "node:stream";
 import { finished } from "node:stream/promises";
 import Anthropic from "@anthropic-ai/sdk";
-import cliProgress from "cli-progress";
 
 import { pdfToPng } from "pdf-to-png-converter";
 import sqlite3 from "sqlite3";
 import { program } from "commander";
 import util from "node:util";
+import path from "node:path";
+import { exec } from "node:child_process";
+
+const asyncExec = util.promisify(exec);
 
 const GREENHOUSE_AUTH_KEY = process.env.GREENHOUSE_AUTH_KEY;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
@@ -45,33 +53,44 @@ function greenhouse(path) {
 	});
 }
 
-async function downloadCandidates(jobId) {
+async function downloadCandidates(jobId, candidateId) {
 	let page = 1;
-	console.log("Downloading candidates...");
+	console.log("Downloading candidates...", { jobId, candidateId });
 	while (true) {
 		process.stdout.write(`🔄`);
-		const applications = await greenhouse(
+		const applicationsResponse = await greenhouse(
 			`applications?job_id=${jobId}&page=${page}&status=active`,
 		);
-		const applicationsJson = await applications.json();
+		const applicationsJson = await applicationsResponse.json();
 		if (applicationsJson.length === 0) {
 			console.log("No more candidates");
 			break;
 		}
+		const applications = applicationsJson.filter(
+			(a) =>
+				a.prospect === false && a.rejected_at === null && a.status === "active",
+		);
 
-		for (const application of applicationsJson) {
-			const candidateId = application.candidate_id;
+		for (const application of applications) {
+			if (
+				candidateId &&
+				application.candidate_id !== parseInt(candidateId, 10)
+			) {
+				continue;
+			}
 
 			const existingCandidate = await dbGet(
 				"SELECT id FROM candidates WHERE id = ?",
-				[candidateId],
+				[application.candidate_id],
 			);
 			if (existingCandidate) {
 				process.stdout.write("🙈");
 				continue;
 			}
 
-			const candidateDetails = await greenhouse(`candidates/${candidateId}`);
+			const candidateDetails = await greenhouse(
+				`candidates/${application.candidate_id}`,
+			);
 			const candidateDetailsJson = await candidateDetails.json();
 			const candidateName = `${candidateDetailsJson.first_name} ${candidateDetailsJson.last_name}`;
 
@@ -85,15 +104,17 @@ async function downloadCandidates(jobId) {
 				continue;
 			}
 
-			await fs.mkdir(`candidates/${candidateId}`, { recursive: true });
+			await fs.mkdir(`candidates/${application.candidate_id}`, {
+				recursive: true,
+			});
 			const resume = attachments.find((a) => a.type === "resume");
 			if (resume) {
 				const resumeUrl = resume.url;
 
 				const parsedUrl = new URL(resumeUrl);
-				const extension = parsedUrl.pathname.split(".").pop();
+				let extension = parsedUrl.pathname.split(".").pop();
+				let filename = `candidates/${application.candidate_id}/resume.${extension}`;
 
-				const filename = `candidates/${candidateId}/resume.${extension}`;
 				const response = await fetch(resumeUrl);
 
 				if (!response.body) {
@@ -107,28 +128,45 @@ async function downloadCandidates(jobId) {
 
 				const pageFilenames: string[] = [];
 
+				if (extension === "docx") {
+					process.stdout.write("📄");
+					const command = await asyncExec(
+						`soffice --headless --convert-to pdf ${filename} --outdir ${path.dirname(filename)}`,
+					);
+					if (command.stderr) {
+						console.log({ command: command.stderr });
+					} else {
+						extension = "pdf";
+						filename = `candidates/${application.candidate_id}/resume.pdf`;
+						process.stdout.write("✓");
+					}
+				}
+
 				if (extension === "pdf") {
 					process.stdout.write("🖼️");
 					const pages = await pdfToPng(filename, {
-						verbosityLevel: 1,
 						viewportScale: 2.0,
 						useSystemFonts: true,
 						disableFontFace: true,
 						verbosityLevel: 0,
 					});
 					for (let i = 0; i < pages.length; i++) {
-						const pageFilename = `candidates/${candidateId}/resume-${i}.png`;
+						const pageFilename = `candidates/${application.candidate_id}/resume-${i}.png`;
 						await fs.writeFile(pageFilename, pages[i].content);
 						pageFilenames.push(pageFilename);
 					}
 				} else {
-					pageFilenames.push(filename);
+					console.log("Unknown file type", { extension });
 				}
 
 				if (pageFilenames.length > 0) {
 					await dbRun(
 						"INSERT INTO candidates (id, name, resume_pages) VALUES (?, ?, ?)",
-						[candidateId, candidateName, JSON.stringify(pageFilenames)],
+						[
+							application.candidate_id,
+							candidateName,
+							JSON.stringify(pageFilenames),
+						],
 					);
 					process.stdout.write("✓");
 				} else {
@@ -158,42 +196,41 @@ async function setup() {
 program
 	.command("download")
 	.option("--job-id <id>", "The job id to download candidates from")
-	.action(async (str, options) => {
+	.option("--candidate-id <id>", "The candidate id to download")
+	.action(async (options) => {
 		const jobId = options.jobId || 2952722;
 		await setup();
-		await downloadCandidates(jobId);
+		await downloadCandidates(jobId, options.candidateId);
 		db.close();
 	});
 
-program.command("list").action(async (str, options) => {
+program.command("list").action(async (options) => {
 	await setup();
-	const rows = await dbAll(
-		"SELECT * FROM candidates WHERE score > 50 ORDER BY score DESC",
-	);
+	const rows = await dbAll("SELECT * FROM candidates ORDER BY score DESC");
 	console.log({ rows });
 	db.close();
 });
 
-program.command("rank").action(async (str, options) => {
-	await setup();
-	const rows = await dbAll("SELECT * FROM candidates");
-	for (const row of rows) {
-		const candidateId = row.id;
-		const candidateName = row.name;
-		const candidateScore = row.score;
-		const resumePages = JSON.parse(row.resume_pages);
-
-		const pngPages = resumePages.filter((page) => page.endsWith(".png"));
-		if (pngPages.length === 0) {
-			console.log("No PNG pages", { candidateId, candidateName });
-			continue;
+program
+	.command("rank")
+	.option("--candidate-id <id>", "The candidate id to rank")
+	.action(async (options) => {
+		await setup();
+		let rows: any[] = [];
+		if (options.candidateId) {
+			rows = await dbAll("SELECT * FROM candidates WHERE id = ?", [
+				options.candidateId,
+			]);
+		} else {
+			rows = await dbAll("SELECT * FROM candidates");
 		}
+		for (const row of rows) {
+			const candidateId = row.id;
+			const candidateName = row.name;
+			const candidateScore = row.score;
+			const resumePages = JSON.parse(row.resume_pages);
 
-		const response = await anthropic.messages.create({
-			model: "claude-sonnet-4-20250514",
-			system: CANDIDATE,
-			max_tokens: 1000,
-			messages: [
+			const messages = [
 				{
 					role: "user",
 					content: `Rate the following candidate's resume: ${candidateName}`,
@@ -214,38 +251,44 @@ program.command("rank").action(async (str, options) => {
 					),
 				},
 				{ role: "assistant", content: "{" },
-			],
-		});
+			];
 
-		const json = JSON.parse(`{${response.content[0].text}`);
+			const response = await anthropic.messages.create({
+				model: "claude-sonnet-4-20250514",
+				system: CANDIDATE,
+				max_tokens: 1000,
+				messages,
+			});
 
-		if (candidateScore === null) {
-			console.log("Rating", {
-				candidateId,
-				candidateName,
-				score: json.score,
-				notes: json.notes,
-				github: json.github,
-				personalSite: json.personalSite,
-			});
-		} else {
-			console.log("Updating", {
-				candidateId,
-				candidateName,
-				score: `${candidateScore} -> ${json.score}`,
-				notes: json.notes,
-			});
+			const json = JSON.parse(`{${response.content[0].text}`);
+
+			if (candidateScore === null) {
+				console.log("Rating", {
+					candidateId,
+					candidateName,
+					score: json.score,
+					notes: json.notes,
+					github: json.github,
+					personalSite: json.personalSite,
+				});
+			} else {
+				console.log("Updating", {
+					candidateId,
+					candidateName,
+					score: `${candidateScore} -> ${json.score}`,
+					notes: json.notes,
+				});
+			}
+
+			await dbRun(
+				"UPDATE candidates SET score = ?, notes = ?, github = ?, personal_site = ? WHERE id = ?",
+				[json.score, json.notes, json.github, json.personalSite, candidateId],
+			);
 		}
+		db.close();
+	});
 
-		await dbRun(
-			"UPDATE candidates SET score = ?, notes = ?, github = ?, personal_site = ? WHERE id = ?",
-			[json.score, json.notes, json.github, json.personalSite, candidateId],
-		);
-	}
-	db.close();
-});
-
-program.command("chat").action(async (str, options) => {
+program.command("chat").action(async (options) => {
 	await setup();
 	const rows = await dbAll("SELECT * FROM candidates");
 	for (const row of rows) {
@@ -257,5 +300,18 @@ program.command("chat").action(async (str, options) => {
 	}
 	db.close();
 });
+
+// program.command("delete-files").action(async (str, options) => {
+// 	const files = await anthropic.beta.files.list({
+// 		betas: ["files-api-2025-04-14"],
+// 	});
+// 	// console.log({ files });
+// 	for (const file of files.data) {
+// 		console.log({ file: file.id });
+// 		await anthropic.beta.files.delete(file.id, {
+// 			betas: ["files-api-2025-04-14"],
+// 		});
+// 	}
+// });
 
 program.parse(process.argv);
