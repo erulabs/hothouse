@@ -90,7 +90,7 @@ async function downloadAndConvertToImage(candidateId, file, type) {
 		process.stdout.write("🖼️");
 		const pages = await pdfToPng(filename, {
 			viewportScale: 2.0,
-			useSystemFonts: true,
+			useSystemFonts: false,
 			disableFontFace: true,
 			verbosityLevel: 0,
 		});
@@ -131,6 +131,7 @@ async function downloadCandidates(jobId, candidateId) {
 				candidateId &&
 				application.candidate_id !== parseInt(candidateId, 10)
 			) {
+				process.stdout.write("🙈");
 				continue;
 			}
 
@@ -205,6 +206,13 @@ async function downloadCandidates(jobId, candidateId) {
 			} else {
 				process.stdout.write("✗");
 			}
+
+			if (
+				candidateId &&
+				application.candidate_id === parseInt(candidateId, 10)
+			) {
+				break;
+			}
 		}
 		page++;
 	}
@@ -254,10 +262,16 @@ program
 	});
 
 program
-	.command("rank")
+	.command("rank <job-id>")
 	.option("--candidate-id <id>", "The candidate id to rank")
-	.action(async (options) => {
+	.option("--refresh", "Re-rank already ranked candidates")
+	.action(async (jobId, options) => {
 		await setup();
+
+		const jobPostResponse = await greenhouse(`jobs/${jobId}/job_post`);
+		const jobPostJson = await jobPostResponse.json();
+		const jobPostDescription = jobPostJson.content;
+
 		let rows: any[] = [];
 		if (options.candidateId) {
 			rows = await dbAll("SELECT * FROM candidates WHERE id = ?", [
@@ -272,10 +286,24 @@ program
 			const candidateScore = row.score;
 			const resumePages = JSON.parse(row.resume_pages);
 
+			if (!options.refresh && candidateScore !== null) {
+				process.stdout.write("🙈");
+				continue;
+			}
+
 			const messages = [
 				{
 					role: "user",
-					content: `Rate the following candidate's resume: ${candidateName}`,
+					content: `Rate the attached resume and optional cover letter for the following job post:`,
+				},
+				{
+					role: "user",
+					content: [
+						{
+							type: "text",
+							text: jobPostDescription,
+						},
+					],
 				},
 				{
 					role: "user",
