@@ -43,15 +43,17 @@ You will be given a path to a directory for each candidate which contains their 
 - Resume is articulate, clear, easy to read, well formatted, and not full of buzzwords. Judge the writing style with an eye for the authors ability to communicate clearly. Spelling mistakes are not good.
 - Career history is varied and not all enterprise
 - Candidate appears to match well with our core values
-- Has github profile, github profile has some open source projects, some recent activity, especially if the projects are related to platform engineering, typescript, or education
+- Candidate appears to enjoy learning and coding
 - Positions are mostly IC roles, some management and leadership is good, but should be mostly development / engineering focused
 - We want friendly, good to work with, exceptional candidates who can self-direct and take ownership
 - The aesthetic and design quality of their resume (layout etc) are important and should be considered part of their communication skills. A very very long resume is probably not a good thing with regards to communication abilities, but this is a minor nitpick compared to overall quality
 
 Bonus points for:
 - A good match for our tech stack: Typescript/JavaScript, MySQL, Kubernetes, Pulumi, Argo, Prometheus, SaltStack, Vitess, AWS, EKS, Datadog, Node.js. This is good, but not required; a very strong candidate with a diverse resume can pick up our toolset. Consider this bonus!
+- A cover letter expressing genuine interest in our company and the role
 - Has worked in Education technology previously
 - Is a founder or very early startup employee (especially if that startup is now successful and well-known!)
+- Has github profile
 
 Be critical! Assume your response will be used to hire or not hire this candidate! Who would you want to work with?
 

@@ -53,6 +53,61 @@ function greenhouse(path) {
 	});
 }
 
+async function downloadAndConvertToImage(candidateId, file, type) {
+	const url = file.url;
+	const parsedUrl = new URL(url);
+	let extension = parsedUrl.pathname.split(".").pop();
+	let filename = `candidates/${candidateId}/${type}.${extension}`;
+
+	const response = await fetch(url);
+
+	if (!response.body) {
+		throw new Error("No response body");
+	}
+
+	process.stdout.write("💾");
+	await finished(
+		Readable.fromWeb(response.body).pipe(createWriteStream(filename)),
+	);
+
+	const pageFilenames: string[] = [];
+
+	if (extension === "docx" || extension === "doc") {
+		process.stdout.write("📄");
+		const command = await asyncExec(
+			`soffice --headless --convert-to pdf ${filename} --outdir ${path.dirname(filename)}`,
+		);
+		if (command.stderr) {
+			console.log({ command: command.stderr });
+		} else {
+			extension = "pdf";
+			filename = `candidates/${candidateId}/${type}.${extension}`;
+			process.stdout.write("✓");
+		}
+	}
+
+	if (extension === "pdf") {
+		process.stdout.write("🖼️");
+		const pages = await pdfToPng(filename, {
+			viewportScale: 2.0,
+			useSystemFonts: true,
+			disableFontFace: true,
+			verbosityLevel: 0,
+		});
+		for (let i = 0; i < pages.length; i++) {
+			const pageFilename = `candidates/${candidateId}/${type}-${i}.png`;
+			await fs.writeFile(pageFilename, pages[i].content);
+			pageFilenames.push(pageFilename);
+		}
+	} else {
+		console.log("Unknown file type", {
+			candidateId,
+			extension,
+		});
+	}
+	return pageFilenames;
+}
+
 async function downloadCandidates(jobId, candidateId) {
 	let page = 1;
 	console.log("Downloading candidates...", { jobId, candidateId });
@@ -84,8 +139,17 @@ async function downloadCandidates(jobId, candidateId) {
 				[application.candidate_id],
 			);
 			if (existingCandidate) {
-				process.stdout.write("🙈");
-				continue;
+				if (candidateId) {
+					console.log("Refreshing existing candidate", {
+						candidateId: application.candidate_id,
+					});
+					await dbAll("DELETE FROM candidates WHERE id = ?", [
+						application.candidate_id,
+					]);
+				} else {
+					process.stdout.write("🙈");
+					continue;
+				}
 			}
 
 			const candidateDetails = await greenhouse(
@@ -108,70 +172,38 @@ async function downloadCandidates(jobId, candidateId) {
 				recursive: true,
 			});
 			const resume = attachments.find((a) => a.type === "resume");
+			const pageFilenames: string[] = [];
 			if (resume) {
-				const resumeUrl = resume.url;
-
-				const parsedUrl = new URL(resumeUrl);
-				let extension = parsedUrl.pathname.split(".").pop();
-				let filename = `candidates/${application.candidate_id}/resume.${extension}`;
-
-				const response = await fetch(resumeUrl);
-
-				if (!response.body) {
-					throw new Error("No response body");
-				}
-
-				process.stdout.write("💾");
-				await finished(
-					Readable.fromWeb(response.body).pipe(createWriteStream(filename)),
+				const resumeFilenames = await downloadAndConvertToImage(
+					application.candidate_id,
+					resume,
+					"resume",
 				);
+				pageFilenames.push(...resumeFilenames);
+			}
 
-				const pageFilenames: string[] = [];
+			const coverLetter = attachments.find((a) => a.type === "cover_letter");
+			if (coverLetter) {
+				const coverLetterFilenames = await downloadAndConvertToImage(
+					application.candidate_id,
+					coverLetter,
+					"cover_letter",
+				);
+				pageFilenames.push(...coverLetterFilenames);
+			}
 
-				if (extension === "docx") {
-					process.stdout.write("📄");
-					const command = await asyncExec(
-						`soffice --headless --convert-to pdf ${filename} --outdir ${path.dirname(filename)}`,
-					);
-					if (command.stderr) {
-						console.log({ command: command.stderr });
-					} else {
-						extension = "pdf";
-						filename = `candidates/${application.candidate_id}/resume.pdf`;
-						process.stdout.write("✓");
-					}
-				}
-
-				if (extension === "pdf") {
-					process.stdout.write("🖼️");
-					const pages = await pdfToPng(filename, {
-						viewportScale: 2.0,
-						useSystemFonts: true,
-						disableFontFace: true,
-						verbosityLevel: 0,
-					});
-					for (let i = 0; i < pages.length; i++) {
-						const pageFilename = `candidates/${application.candidate_id}/resume-${i}.png`;
-						await fs.writeFile(pageFilename, pages[i].content);
-						pageFilenames.push(pageFilename);
-					}
-				} else {
-					console.log("Unknown file type", { extension });
-				}
-
-				if (pageFilenames.length > 0) {
-					await dbRun(
-						"INSERT INTO candidates (id, name, resume_pages) VALUES (?, ?, ?)",
-						[
-							application.candidate_id,
-							candidateName,
-							JSON.stringify(pageFilenames),
-						],
-					);
-					process.stdout.write("✓");
-				} else {
-					process.stdout.write("✗");
-				}
+			if (pageFilenames.length > 0) {
+				await dbRun(
+					"INSERT INTO candidates (id, name, resume_pages) VALUES (?, ?, ?)",
+					[
+						application.candidate_id,
+						candidateName,
+						JSON.stringify(pageFilenames),
+					],
+				);
+				process.stdout.write("✓");
+			} else {
+				process.stdout.write("✗");
 			}
 		}
 		page++;
@@ -204,12 +236,22 @@ program
 		db.close();
 	});
 
-program.command("list").action(async (options) => {
-	await setup();
-	const rows = await dbAll("SELECT * FROM candidates ORDER BY score DESC");
-	console.log({ rows });
-	db.close();
-});
+program
+	.command("list")
+	.option("--candidate-id <id>", "The candidate id to list")
+	.action(async (options) => {
+		await setup();
+		let rows: any[] = [];
+		if (options.candidateId) {
+			rows = await dbAll("SELECT * FROM candidates WHERE id = ?", [
+				options.candidateId,
+			]);
+		} else {
+			rows = await dbAll("SELECT * FROM candidates ORDER BY score DESC");
+		}
+		console.log(rows);
+		db.close();
+	});
 
 program
 	.command("rank")
