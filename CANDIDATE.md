@@ -7,6 +7,7 @@ You will be given a job description, followed by a candidates resume, followed b
 ## JUDGEMENT CRITERIA
 
 - Resume is articulate, clear, easy to read, well formatted, and not full of buzzwords. Judge the writing style with an eye for the authors ability to communicate clearly. Spelling mistakes are not good
+- We expect the candidate to love coding! They do not have to be a software engineer, but they should ideally speak to personal projects, attach a github, or specifically mention writing software in a previous role
 - Career history is varied and not all enterprise or consulting
 - Candidate appears to match well with our core values
 - Candidate appears to enjoy learning and coding
