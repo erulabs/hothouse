@@ -8,28 +8,30 @@ This tool requires `libreoffice` for converting docx resumes to images. Install 
 
     brew install --cask libreoffice
 
+Then install the application's nodejs deps:
+
+    yarn
+
 ### Usage:
 
-Create a `.env` file with ANTHROPIC_API_KEY and GREENHOUSE_AUTH_KEY. The GREENHOUSE_AUTH_KEY must have Harbor and Candidates access.
+Create a `.env` file with ANTHROPIC_API_KEY and GREENHOUSE_AUTH_KEY. The GREENHOUSE_AUTH_KEY must have GET/Read access to "Harbor", "Candidates" and "Job Post" access.
 
-    ./greenhouse.js <command>
+    ./greenhouse.ts <command>
+
+    ./greenhouse.ts --help
 
 
 ### Download candidates and resumes:
 
-    ./greenhouse.js download --job-id 2423423
+    ./greenhouse.ts download <job-id>
 
 
 ### List
 
-    ./greenhouse.js list
+    ./greenhouse.ts list
 
 
 ### Rank
 
-    ./greenhouse.js rank
+    ./greenhouse.ts rank <job-id>
 
-
-### Chat (Claude Code)
-
-    ./greenhouse.js chat

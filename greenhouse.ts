@@ -234,11 +234,9 @@ async function setup() {
 }
 
 program
-	.command("download")
-	.option("--job-id <id>", "The job id to download candidates from")
+	.command("download <job-id>")
 	.option("--candidate-id <id>", "The candidate id to download")
-	.action(async (options) => {
-		const jobId = options.jobId || 2952722;
+	.action(async (jobId, options) => {
 		await setup();
 		await downloadCandidates(jobId, options.candidateId);
 		db.close();
@@ -255,9 +253,18 @@ program
 				options.candidateId,
 			]);
 		} else {
-			rows = await dbAll("SELECT * FROM candidates ORDER BY score DESC");
+			rows = await dbAll(
+				"SELECT * FROM candidates WHERE score IS NOT NULL ORDER BY score DESC",
+			);
 		}
-		console.log(rows);
+		console.table(rows, [
+			"id",
+			"name",
+			"score",
+			"notes",
+			"github",
+			"personal_site",
+		]);
 		db.close();
 	});
 
@@ -357,31 +364,5 @@ program
 		}
 		db.close();
 	});
-
-program.command("chat").action(async (options) => {
-	await setup();
-	const rows = await dbAll("SELECT * FROM candidates");
-	for (const row of rows) {
-		const candidateId = row.id;
-		const candidateName = row.name;
-		const candidateScore = row.score;
-		const candidateNotes = row.notes;
-		console.log({ candidateId, candidateName, candidateScore, candidateNotes });
-	}
-	db.close();
-});
-
-// program.command("delete-files").action(async (str, options) => {
-// 	const files = await anthropic.beta.files.list({
-// 		betas: ["files-api-2025-04-14"],
-// 	});
-// 	// console.log({ files });
-// 	for (const file of files.data) {
-// 		console.log({ file: file.id });
-// 		await anthropic.beta.files.delete(file.id, {
-// 			betas: ["files-api-2025-04-14"],
-// 		});
-// 	}
-// });
 
 program.parse(process.argv);

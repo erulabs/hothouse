@@ -63,6 +63,7 @@ Use the full range, 0 through 100. If no resume is provided and you have no deta
 
 Your response should be in the following JSON format:
 
+```json
 {
     # 0-100 score based on the above criteria
     score: INTEGER,
@@ -73,6 +74,7 @@ Your response should be in the following JSON format:
     # The URL to the candidate's personal website, if found in the resume
     personalSite: STRING
 }
+```
 
 Do not include any other text outside of the JSON schema above.
 
