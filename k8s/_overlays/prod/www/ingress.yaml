@@ -1,0 +1,22 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+    labels:
+        app: hothouse
+    name: hothouse
+    annotations:
+        haproxy-ingress.github.io/maxconn-server: "20"
+spec:
+    ingressClassName: haproxy-ingress-internal
+    rules:
+        - host: hothouse.us-east-1-prod.internal.classdojo-ops.com
+          http:
+              paths:
+                  - pathType: ImplementationSpecific
+                    path: /
+                    backend:
+                        service:
+                            name: hothouse
+                            port:
+                                name: http-ports

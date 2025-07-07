@@ -331,9 +331,9 @@ program
 			];
 
 			const response = await anthropic.messages.create({
-				model: "claude-sonnet-4-20250514",
+				model: "claude-opus-4-20250514",
 				system: CANDIDATE,
-				max_tokens: 1000,
+				max_tokens: 1024,
 				messages,
 			});
 

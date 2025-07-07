@@ -1,0 +1,43 @@
+apiVersion: skaffold/v4beta13
+kind: Config
+build:
+  artifacts:
+    - image: erulabs/hothouse
+      context: ./hothouse
+      sync:
+        manual:
+          - src: '**/*'
+            dest: /app
+      docker:
+        dockerfile: Dockerfile
+        target: dev
+  local:
+    push: false
+    useBuildkit: true
+manifests:
+  kustomize:
+    paths:
+      - k8s/_overlays/dev
+portForward:
+  - resourceType: Service
+    resourceName: hothouse
+    port: 3000
+    address: 0.0.0.0
+    localPort: 3000
+profiles:
+  - name: prod-hothouse
+    build:
+      artifacts:
+        - image: erulabs/hothouse
+          context: ./hothouse
+          docker:
+            dockerfile: Dockerfile
+            target: production
+            pullParent: true
+      local:
+        push: true
+        useBuildkit: true
+    manifests:
+      kustomize:
+        paths:
+          - k8s/_overlays/prod/www

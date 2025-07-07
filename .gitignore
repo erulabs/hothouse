@@ -4,3 +4,8 @@ node_modules
 .DS_Store
 candidates.db
 .env
+k8s/**/deploy-config.env
+*.plain
+*.pem
+*.crt
+*.key

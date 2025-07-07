@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: hothouse
+spec:
+    template:
+        spec:
+            terminationGracePeriodSeconds: 3
+            containers:
+                - name: hothouse
+                  env:
+                      - name: NODE_ENV
+                        value: development
+                      - name: REDIS_SERVERS
+                        value: redis:6379
+                  envFrom:
+                      - secretRef:
+                            name: hothouse
+            volumes:
+                - name: service-cert
+                  secret:
+                      secretName: service-cert

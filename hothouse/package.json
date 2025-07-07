@@ -1,0 +1,30 @@
+{
+  "name": "hothouse",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.56.0",
+    "ioredis": "^5.6.1",
+    "next": "15.3.5",
+    "pdf-to-png-converter": "^3.7.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.0.6",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^24.0.10",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  },
+  "packageManager": "yarn@4.9.2"
+}
