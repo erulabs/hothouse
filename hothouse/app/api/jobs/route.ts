@@ -3,7 +3,7 @@ import { greenhouse } from '@/lib/greenhouse'
 import { redis } from '../../../lib/redis'
 
 const cache = redis('GENERAL')
-const cacheKey = 'job-posts'
+const cacheKey = 'job-posts7'
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,14 +12,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ jobs: JSON.parse(cachedJobs) })
     }
 
-    const jobsRequest = await greenhouse('job_posts')
-    const jobs = (await jobsRequest.json()).map((job: any) => {
-      return {
-        id: job.id,
-        job_id: job.job_id,
-        title: job.title,
-      }
-    })
+    // TODO: Add pagination
+    const jobsRequest = await greenhouse('jobs?per_page=500')
+    const jobs = (await jobsRequest.json())
+      .map((job: any) => {
+        return {
+          id: job.id,
+          name: job.name,
+        }
+      })
     await cache.setex(cacheKey, 60 * 60 * 0.5, JSON.stringify(jobs))
     return NextResponse.json({ jobs })
   } catch (error) {

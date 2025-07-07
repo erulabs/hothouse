@@ -12,14 +12,12 @@ function parseUris(urisStr: string): Array<{ host: string; port: number }> {
     return out
 }
 
-const REDIS_SERVERS = parseUris(process.env.REDIS_SERVERS || '')
+export const REDIS_SERVERS = parseUris(process.env.REDIS_SERVERS || '')
 const REDIS_ENABLE_TLS = process.env.REDIS_ENABLE_TLS === 'true'
 
 if (!process.env.REDIS_SERVERS || !REDIS_SERVERS.length) {
     throw new Error('REDIS_SERVERS is not set. You can create a .env file with the servers.')
 }
-
-console.log({ REDIS_SERVERS })
 
 const redises: Record<
     string,
