@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { downloadQueue } from '../../../lib/queue'
 
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
     const jobId = request.nextUrl.searchParams.get('jobId')
     const candidateId = request.nextUrl.searchParams.get('candidateId')

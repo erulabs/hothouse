@@ -1,13 +1,13 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-    name: hothouse
+    name: hothouse-worker
 spec:
     template:
         spec:
             terminationGracePeriodSeconds: 3
             containers:
-                - name: hothouse
+                - name: hothouse-worker
                   env:
                       - name: NODE_ENV
                         value: development

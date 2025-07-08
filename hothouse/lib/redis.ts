@@ -30,6 +30,7 @@ const redisOptions: RedisOptions = {
     lazyConnect: true,
     enableOfflineQueue: true,
     connectTimeout: 10000,
+    maxRetriesPerRequest: null,
     tls: REDIS_ENABLE_TLS ? {} : undefined,
     retryStrategy: function (times: number) {
         return Math.min(times * 1000, 10000)

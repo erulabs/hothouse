@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: hothouse-worker
+    labels:
+        app: hothouse-worker
+spec:
+    selector:
+        matchLabels:
+            app: hothouse-worker
+    minReadySeconds: 1
+    strategy:
+        type: Recreate
+    replicas: 1
+    template:
+        metadata:
+            labels:
+                app: hothouse-worker
+        spec:
+            containers:
+                - name: hothouse-worker
+                  image: erulabs/hothouse
+                  imagePullPolicy: IfNotPresent
+                  terminationMessagePolicy: FallbackToLogsOnError
+                  entrypoint: ["node", "worker"]
+                  ports:
+                      - name: inspector
+                        containerPort: 9229
+                      - name: metrics
+                        containerPort: 5000
+                  env:
+                      - name: GET_HOSTS_FROM
+                        value: dns
+                      - name: INSPECTOR_PORT
+                        value: "9229"
+                  resources:
+                      requests:
+                          cpu: 500m
+                          memory: 2000Mi
