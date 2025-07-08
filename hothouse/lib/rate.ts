@@ -13,7 +13,7 @@ const CANDIDATE = readFileSync("/app/CANDIDATE.md", "utf-8");
 
 // Skip the call to the LLM and just set a random score
 // Useful for testing without incurring Anthropic costs
-const SKIP_RATING = true;
+const SKIP_RATING = false;
 
 export async function rate(t: Job) {
   const { jobId, candidateId, refresh } = t.data;
