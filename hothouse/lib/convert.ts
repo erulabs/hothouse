@@ -25,7 +25,7 @@ export async function convert(candidateId: string, file: any, type: string) {
 
   logger.debug("download: downloading", { filename });
   await finished(
-    Readable.fromWeb(response.body).pipe(createWriteStream(filename))
+    Readable.fromWeb(response.body).pipe(createWriteStream(filename)),
   );
 
   const pageFilenames: string[] = [];
@@ -34,8 +34,8 @@ export async function convert(candidateId: string, file: any, type: string) {
     logger.debug("download: converting to pdf", { filename });
     const command = await asyncExec(
       `soffice --headless --convert-to pdf ${filename} --outdir ${path.dirname(
-        filename
-      )}`
+        filename,
+      )}`,
     );
     if (command.stderr) {
       logger.error("download: soffice error", { command: command.stderr });

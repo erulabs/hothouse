@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { Job } from "bullmq";
-import { redis } from "../../../lib/redis";
+import { NextResponse } from "next/server";
 import { rateQueue } from "@/lib/queue";
-import { logger } from "@/lib/logger";
+import { redis } from "@/lib/redis";
 import { downloadCandidates } from "@/lib/download";
+import { logger } from "@/lib/logger";
+import type { NextRequest } from "next/server";
+import type { Job } from "bullmq";
 
 const db = redis("GENERAL");
 const cacheKey = "candidates";
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
     if (!jobId) {
       return NextResponse.json(
         { error: "Job ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
     let candidatesRaw = await db.zrange(`${cacheKey}:${jobId}`, 0, -1);
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
     }
 
     const candidatesData = await db.mget(
-      ...candidateIds.map((c) => `candidate:${jobId}:${c}`)
+      ...candidateIds.map((c) => `candidate:${jobId}:${c}`),
     );
     const candidates = candidatesData
       .map((c) => JSON.parse(c || "{}"))
@@ -53,15 +54,15 @@ export async function GET(request: NextRequest) {
         a.score === undefined
           ? 1
           : b.score === undefined
-          ? -1
-          : b.score - a.score
+            ? -1
+            : b.score - a.score,
       ),
     });
   } catch (error) {
     console.error("Error fetching jobs:", error);
     return NextResponse.json(
       { error: "Failed to fetch jobs" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

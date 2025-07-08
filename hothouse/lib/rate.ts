@@ -2,7 +2,7 @@ import { greenhouse } from "./greenhouse";
 import { anthropic, RATING_MODEL } from "./anthropic";
 import fs from "node:fs/promises";
 import { readFileSync } from "node:fs";
-import { Job } from "bullmq";
+import type { Job } from "bullmq";
 import { logger } from "./logger";
 import { redis } from "./redis";
 import { convert } from "./convert";
@@ -29,7 +29,7 @@ export async function rate(t: Job) {
     await db.zadd(`candidates:${jobId}`, score, id);
     await db.set(
       `candidate:${jobId}:${id}`,
-      JSON.stringify({ id, score, ...data })
+      JSON.stringify({ id, score, ...data }),
     );
   }
 
@@ -42,7 +42,7 @@ export async function rate(t: Job) {
       await db.setex(
         `jobPostDescription:${jobId}`,
         60 * 60 * 24,
-        jobPostDescription
+        jobPostDescription,
       );
     }
   }
@@ -63,7 +63,7 @@ export async function rate(t: Job) {
 
   for (const row of rows) {
     const candidate = JSON.parse(
-      (await db.get(`candidate:${jobId}:${row}`)) || "{}"
+      (await db.get(`candidate:${jobId}:${row}`)) || "{}",
     );
     if (!candidate.id) {
       logger.error("invalid data", { jobId, candidateId, row, candidate });
@@ -93,14 +93,14 @@ export async function rate(t: Job) {
       await db.setex(
         `candidateDetails:${id}`,
         60 * 60 * 1,
-        JSON.stringify(candidateDetailsJson)
+        JSON.stringify(candidateDetailsJson),
       );
     }
 
     const name = `${candidateDetailsJson.first_name} ${candidateDetailsJson.last_name}`;
 
     const openApplication = (candidateDetailsJson.applications || []).find(
-      (a: any) => a.status === "active"
+      (a: any) => a.status === "active",
     );
     const attachments = openApplication?.attachments;
 
@@ -134,7 +134,7 @@ export async function rate(t: Job) {
       const coverLetterFilenames = await convert(
         id,
         coverLetter,
-        "cover_letter"
+        "cover_letter",
       );
       pageFilenames.push(...coverLetterFilenames);
     }
@@ -160,7 +160,7 @@ export async function rate(t: Job) {
                 data: await fs.readFile(page, "base64"),
               },
             };
-          })
+          }),
         ),
       },
       { role: "assistant", content: "{" },

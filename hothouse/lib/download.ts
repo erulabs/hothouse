@@ -1,4 +1,4 @@
-import { Job } from "bullmq";
+import type { Job } from "bullmq";
 
 import { greenhouse } from "./greenhouse";
 import { redis } from "./redis";
@@ -14,7 +14,7 @@ export async function downloadCandidates(t: Job) {
   while (true) {
     logger.debug("download: fetching candidates", { jobId, candidateId, page });
     const applicationsResponse = await greenhouse(
-      `applications?job_id=${jobId}&page=${page}&status=active`
+      `applications?job_id=${jobId}&page=${page}&status=active`,
     );
     const applicationsJson = await applicationsResponse.json();
     if (applicationsJson.length === 0) {
@@ -27,7 +27,7 @@ export async function downloadCandidates(t: Job) {
     }
     const applications = applicationsJson.filter(
       (a: any) =>
-        a.prospect === false && a.rejected_at === null && a.status === "active"
+        a.prospect === false && a.rejected_at === null && a.status === "active",
     );
     let candidatesAdded = 0;
     for (const application of applications) {
@@ -43,7 +43,7 @@ export async function downloadCandidates(t: Job) {
 
       const existingCandidate = await db.zscore(
         `candidates:${jobId}`,
-        application.candidate_id
+        application.candidate_id,
       );
       if (existingCandidate) {
         if (candidateId) {
@@ -62,7 +62,7 @@ export async function downloadCandidates(t: Job) {
       await db.zadd(`candidates:${jobId}`, 0, application.candidate_id);
       await db.set(
         `candidate:${jobId}:${application.candidate_id}`,
-        JSON.stringify({ id: application.candidate_id })
+        JSON.stringify({ id: application.candidate_id }),
       );
       candidatesAdded++;
 

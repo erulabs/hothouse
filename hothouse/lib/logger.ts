@@ -1,101 +1,119 @@
-import { createLogger, format, transports } from 'winston'
+import { createLogger, format, transports } from "winston";
 
-const PLAINTEXT_LOGGING = process.env.PLAINTEXT_LOGGING === 'true'
-const LOG_FILE = process.env.LOG_FILE
-const LOG_LEVEL = process.env.LOG_LEVEL || 'info'
-const LOGGING_LABEL = process.env.LOGGING_LABEL || 'hothouse'
-const APP_ENV = process.env.APP_ENV || 'development'
+const PLAINTEXT_LOGGING = process.env.PLAINTEXT_LOGGING === "true";
+const LOG_FILE = process.env.LOG_FILE;
+const LOG_LEVEL = process.env.LOG_LEVEL || "info";
+const LOGGING_LABEL = process.env.LOGGING_LABEL || "hothouse";
+const APP_ENV = process.env.APP_ENV || "development";
 
 let loggingFormat = format.combine(
-    format.timestamp(),
-    format.label({ label: LOGGING_LABEL }),
-    format.label({ label: APP_ENV }),
-    format.json({
-        replacer: (
-            key: string,
-            value: { name: string; message: string; stack: string; cause: unknown }
-        ) => {
-            if (value instanceof Buffer) {
-                return value.toString('base64')
-            } else if (value?.constructor.name === 'Error') {
-                return {
-                    name: value.name,
-                    message: value.message,
-                    stack: value.stack,
-                    cause: value.cause,
-                }
-            }
-            return value
-        },
-    })
-)
+  format.timestamp(),
+  format.label({ label: LOGGING_LABEL }),
+  format.label({ label: APP_ENV }),
+  format.json({
+    replacer: (
+      key: string,
+      value: { name: string; message: string; stack: string; cause: unknown },
+    ) => {
+      if (value instanceof Buffer) {
+        return value.toString("base64");
+      } else if (value?.constructor.name === "Error") {
+        return {
+          name: value.name,
+          message: value.message,
+          stack: value.stack,
+          cause: value.cause,
+        };
+      }
+      return value;
+    },
+  }),
+);
 
-const loggingTransports = [new transports.Console()]
+const loggingTransports = [new transports.Console()];
 
 if (LOG_FILE) {
-    loggingTransports.push(
-        // @ts-expect-error - FileTransportInstance is not assignable to ConsoleTransportInstance
-        new transports.File({ filename: LOG_FILE, level: LOG_LEVEL })
-    )
+  loggingTransports.push(
+    // @ts-expect-error - FileTransportInstance is not assignable to ConsoleTransportInstance
+    new transports.File({ filename: LOG_FILE, level: LOG_LEVEL }),
+  );
 }
 
-if (PLAINTEXT_LOGGING || process.env.NODE_ENV === 'development') {
-    const logFormat = format.printf(info => {
-        const c = Object.assign({}, info)
-        // @ts-expect-error - cant figure this one out!
-        delete c.level
-        delete c.message
-        delete c.timestamp
-        function convertToJson(
-            set: Record<
-                string,
-                { name: string; message: string; stack: string; cause: unknown; toJSON: unknown }
-            >
-        ) {
-            for (const key in set) {
-                if (set[key]?.constructor?.name === 'Error') {
-                    set[key] = {
-                        name: set[key].name,
-                        message: set[key].message,
-                        stack: set[key].stack,
-                        cause: set[key].cause,
-                        toJSON: set[key].toJSON,
-                    }
-                } else if (
-                    set[key] &&
-                    typeof set[key] === 'object' &&
-                    typeof set[key].toJSON === 'function'
-                ) {
-                    set[key] = set[key].toJSON()
-                } else if (set[key] && Array.isArray(set[key])) {
-                    // @ts-expect-error - cant figure this one out!
-                    convertToJson(set[key])
-                }
-            }
+if (PLAINTEXT_LOGGING || process.env.NODE_ENV === "development") {
+  const logFormat = format.printf((info) => {
+    const c = Object.assign({}, info);
+    // @ts-expect-error - cant figure this one out!
+    delete c.level;
+    delete c.message;
+    delete c.timestamp;
+    function convertToJson(
+      set: Record<
+        string,
+        {
+          name: string;
+          message: string;
+          stack: string;
+          cause: unknown;
+          toJSON: unknown;
         }
-        convertToJson(c)
-        // Pretty print objects
-        const obj = JSON.stringify(c, null, 2)
-        let o = Object.keys(c).length > 0 ? obj : ''
-        // If they're very small objects, let's ditch indentation/line-breaks
-        if (o.length < 80) o = o.replace(/\n/g, ' ').replace(/\s\s+/g, ' ')
-        return `${info.level}: ${info.message} ${o}`
-    })
-    loggingFormat = format.combine(format.colorize(), format.timestamp(), logFormat)
+      >,
+    ) {
+      for (const key in set) {
+        if (set[key]?.constructor?.name === "Error") {
+          set[key] = {
+            name: set[key].name,
+            message: set[key].message,
+            stack: set[key].stack,
+            cause: set[key].cause,
+            toJSON: set[key].toJSON,
+          };
+        } else if (
+          set[key] &&
+          typeof set[key] === "object" &&
+          typeof set[key].toJSON === "function"
+        ) {
+          set[key] = set[key].toJSON();
+        } else if (set[key] && Array.isArray(set[key])) {
+          // @ts-expect-error - cant figure this one out!
+          convertToJson(set[key]);
+        }
+      }
+    }
+    convertToJson(c);
+    // Pretty print objects
+    const obj = JSON.stringify(c, null, 2);
+    let o = Object.keys(c).length > 0 ? obj : "";
+    // If they're very small objects, let's ditch indentation/line-breaks
+    if (o.length < 80) o = o.replace(/\n/g, " ").replace(/\s\s+/g, " ");
+    return `${info.level}: ${info.message} ${o}`;
+  });
+  loggingFormat = format.combine(
+    format.colorize(),
+    format.timestamp(),
+    logFormat,
+  );
 }
 
 export const logger = createLogger({
-    level: LOG_LEVEL,
-    format: loggingFormat,
-    transports: loggingTransports,
-})
+  level: LOG_LEVEL,
+  format: loggingFormat,
+  transports: loggingTransports,
+});
 
-export const logOnlyInProduction = function (loggerFunc: string = 'info', ...args: any[]) {
-    Array.prototype.shift.apply(args)
-    if (process.env.NODE_ENV !== 'development') (logger as any)[loggerFunc](...args)
-}
+export const logOnlyInProduction = function (
+  loggerFunc: string = "info",
+  ...args: any[]
+) {
+  Array.prototype.shift.apply(args);
+  if (process.env.NODE_ENV !== "development")
+    (logger as any)[loggerFunc](...args);
+};
 
-export const logOnlyInDevelopment = function (loggerFunc: string = 'info', ...args: any[]) {
-    Array.prototype.shift.apply(args)
-    if (process.env.NODE_ENV === 'development') (logger as any)[loggerFunc](...args)
-}
+export const logOnlyInDevelopment = function (
+  loggerFunc: string = "info",
+  ...args: any[]
+) {
+  Array.prototype.shift.apply(args);
+  if (process.env.NODE_ENV === "development")
+    (logger as any)[loggerFunc](...args);
+};

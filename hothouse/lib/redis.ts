@@ -1,4 +1,4 @@
-import Redis, { RedisOptions } from "ioredis";
+import Redis, { type RedisOptions } from "ioredis";
 import { logger } from "./logger";
 
 function parseUris(urisStr: string): Array<{ host: string; port: number }> {
@@ -17,7 +17,7 @@ const REDIS_ENABLE_TLS = process.env.REDIS_ENABLE_TLS === "true";
 
 if (!process.env.REDIS_SERVERS || !REDIS_SERVERS.length) {
   throw new Error(
-    "REDIS_SERVERS is not set. You can create a .env file with the servers."
+    "REDIS_SERVERS is not set. You can create a .env file with the servers.",
   );
 }
 
@@ -34,10 +34,10 @@ const redisOptions: RedisOptions = {
   connectTimeout: 10000,
   maxRetriesPerRequest: null,
   tls: REDIS_ENABLE_TLS ? {} : undefined,
-  retryStrategy: function (times: number) {
+  retryStrategy: (times: number) => {
     return Math.min(times * 1000, 10000);
   },
-  reconnectOnError: function (err: Error) {
+  reconnectOnError: (err: Error) => {
     // @ts-expect-error code is not defined on Error
     const code = err.code;
     if (
@@ -97,7 +97,7 @@ function redis(target: keyof typeof redises, forceNew = false): Redis {
       });
     });
     // @ts-expect-error waitForReady is not defined on Redis
-    handle.waitForReady = function () {
+    handle.waitForReady = () => {
       return new Promise((resolve, reject) => {
         let resolved = false;
         const connected = () => {
