@@ -23,7 +23,7 @@ async function main() {
       async (t) => {
         await handler(t);
       },
-      { connection, concurrency: 2 }
+      { connection, concurrency: 2 },
     );
 
     worker.on("completed", (job, result) => {

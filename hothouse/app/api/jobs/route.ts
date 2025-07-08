@@ -6,7 +6,7 @@ import { redis } from "../../../lib/redis";
 const cache = redis("GENERAL");
 const cacheKey = "job-posts2";
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const cachedJobs = await cache.get(cacheKey);
     if (cachedJobs) {
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     // TODO: Add pagination
     const jobsRequest = await greenhouse("jobs?per_page=500&status=open");
     const jobsJson = await jobsRequest.json();
-    const jobs = jobsJson.map((job: any) => {
+    const jobs = jobsJson.map((job: { id: string; name: string }) => {
       return {
         id: job.id,
         name: job.name,
