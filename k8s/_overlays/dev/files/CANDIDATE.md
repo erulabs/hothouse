@@ -71,9 +71,11 @@ Your response should be in the following JSON format:
     "score": INTEGER,
     # Your summary of this candidate, particularly any thoughts or notes that add color to this candidate
     "notes": STRING,
-    # The URL to the candidate's github profile, if found in the resume
+    # The URL to the candidate's github profile, if found in the resume or cover letter
     "github": STRING,
-    # The URL to the candidate's personal website, if found in the resume
+    # The URL to the candidate's linkedin profile, if found in the resume or cover letter
+    "linkedin": STRING,
+    # The URL to the candidate's personal website, if found in the resume or cover letter
     "personalSite": STRING
 }
 ```

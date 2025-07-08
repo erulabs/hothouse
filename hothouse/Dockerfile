@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:22-bullseye-slim AS node-version
+FROM node:24-bullseye-slim AS node-version
 ARG CACHEBUST
 RUN --mount=type=cache,target=/var/cache/apt,rw,sharing=locked \
   --mount=type=cache,target=/var/lib/apt,rw,sharing=locked \
@@ -48,7 +48,7 @@ ENV NODE_ENV=development \
     NEXT_TELEMETRY_DISABLED=1
 COPY --chown=node:node . .
 EXPOSE 3000
-ENTRYPOINT [ "yarn", "dev" ]
+ENTRYPOINT [ "./node_modules/.bin/next", "dev" ]
 
 
 FROM node-version AS runner

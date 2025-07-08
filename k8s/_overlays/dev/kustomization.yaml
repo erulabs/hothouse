@@ -4,10 +4,17 @@ resources:
     - ../../bases/www
     - ../../bases/worker
     - redis.yaml
+
 secretGenerator:
     - name: hothouse
       envs:
           - secrets/secrets.plain
+
+configMapGenerator:
+    - name: system-prompt
+      files:
+          - ./files/CANDIDATE.md
+
 patches:
     - path: ./www.yaml
     - path: ./worker.yaml

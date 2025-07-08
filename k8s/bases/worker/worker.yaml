@@ -22,7 +22,7 @@ spec:
                   image: erulabs/hothouse
                   imagePullPolicy: IfNotPresent
                   terminationMessagePolicy: FallbackToLogsOnError
-                  entrypoint: ["node", "worker"]
+                  command: ["./node_modules/.bin/tsx", "worker/index.ts"]
                   ports:
                       - name: inspector
                         containerPort: 9229
@@ -33,6 +33,10 @@ spec:
                         value: dns
                       - name: INSPECTOR_PORT
                         value: "9229"
+                      - name: RATING_MODEL
+                        # for dev: claude-3-5-haiku-20241022 or claude-sonnet-4-20250514
+                        # for production: claude-opus-4-20250514
+                        value: "claude-3-5-haiku-20241022"
                   resources:
                       requests:
                           cpu: 500m
