@@ -20,10 +20,10 @@ manifests:
       - k8s/_overlays/dev
 portForward:
   - resourceType: Service
-    resourceName: hothouse
-    port: 3000
+    resourceName: redis
+    port: 6379
     address: 0.0.0.0
-    localPort: 3000
+    localPort: 6379
 profiles:
   - name: prod-hothouse
     build:

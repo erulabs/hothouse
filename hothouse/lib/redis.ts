@@ -29,7 +29,7 @@ const redises: Record<
 };
 
 const redisOptions: RedisOptions = {
-  lazyConnect: true,
+  lazyConnect: false,
   enableOfflineQueue: true,
   connectTimeout: 10000,
   maxRetriesPerRequest: null,
@@ -66,7 +66,7 @@ function redis(target: keyof typeof redises, forceNew = false): Redis {
   if (!redises[target]) throw new Error(`No such redis "${target}" defined!`);
   if (redises[target].handle && !forceNew) return redises[target].handle;
   else {
-    let handle;
+    let handle: Redis;
     if (redises[target].servers.length === 1) {
       handle = new Redis({
         port: redises[target].servers[0].port,

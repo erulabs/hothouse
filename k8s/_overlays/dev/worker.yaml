@@ -27,13 +27,6 @@ spec:
                         mountPath: /app/CANDIDATE.md
                         subPath: CANDIDATE.md
                   command:
-                    -  ./node_modules/.bin/tsx
-                    - "watch"
-                    - "--no-cache"
-                    - "--exclude=node_modules"
-                    - "--clear-screen=false"
-                    - "--no-deprecation"
-                    - "--trace-warnings"
-                    - "--inspect=0.0.0.0:9229"
-                    - "--dns-result-order=ipv4first"
-                    - "worker/index.ts"
+                    - /bin/bash
+                    - -c
+                    - "sleep 1 && /app/node_modules/.bin/tsx watch --no-cache --exclude=node_modules --clear-screen=false --no-deprecation --trace-warnings --inspect=0.0.0.0:9229 --dns-result-order=ipv4first worker/index.ts"

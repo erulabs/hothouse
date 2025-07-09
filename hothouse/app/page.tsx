@@ -2,9 +2,7 @@
 
 import { FaSync, FaTimes } from "react-icons/fa";
 import { useState, useEffect, Fragment } from "react";
-import { ReactSearchAutocomplete } from "react-search-autocomplete";
 import { useRouter, useSearchParams } from "next/navigation";
-
 import {
   Table,
   TableBody,
@@ -13,27 +11,40 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
 
 export default function Home() {
-  const [jobId, setJobId] = useState<string | null>(null);
+  const [jobId, setJobId] = useState<string | null>(
+    typeof window !== "undefined"
+      ? window.location.search.split("jobId=").pop()
+      : null,
+  );
   const [candidateId, setCandidateId] = useState<string | null>(null);
   const [refresh, setRefresh] = useState<boolean>(false);
-  const [jobs, setJobs] = useState<any[]>([]);
-  const [selectedJob, setSelectedJob] = useState<any | null>(null);
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
-  const [isLoadingJobs, setIsLoadingJobs] = useState<boolean>(true);
   const [candidates, setCandidates] = useState<any[]>([]);
   const [isLoadingCandidates, setIsLoadingCandidates] = useState<boolean>(true);
   const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
-
-  const router = useRouter();
-  const searchParams = useSearchParams();
 
   const handleDownload = async () => {
     await fetch(`/api/download?jobId=${jobId}&candidateId=${candidateId}`, {
       method: "POST",
     });
   };
+
+  const JobSelectInput = () => (
+    <Input
+      value={jobId || ""}
+      onChange={(e) => {
+        let newJobId = e.target.value;
+        if (e.target.value.startsWith("https://app.greenhouse.io/sdash/")) {
+          newJobId = e.target.value.split("/").pop() || "";
+        }
+        window.location.href = `/?jobId=${newJobId}`;
+      }}
+      placeholder="Search for a job"
+    />
+  );
 
   const handleRate = async () => {
     if (!jobId && !candidateId) return;
@@ -61,71 +72,6 @@ export default function Home() {
   };
 
   useEffect(() => {
-    const fetchJobs = async () => {
-      try {
-        setIsLoadingJobs(true);
-        const response = await fetch(`/api/jobs`);
-        const data = await response.json();
-        setJobs(data.jobs);
-
-        // Handle URL parameter on initial load
-        const urlJobId = searchParams.get("jobId");
-        if (urlJobId && data.jobs.length > 0) {
-          const job = data.jobs.find((j: any) => j.id.toString() === urlJobId);
-          if (job) {
-            setSelectedJob(job);
-            setJobId(job.id.toString());
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching jobs:", error);
-      } finally {
-        setIsLoadingJobs(false);
-      }
-    };
-    fetchJobs();
-  }, [searchParams]);
-
-  const handleJobSelect = (item: any) => {
-    setIsAnimating(true);
-
-    // Update URL with jobId parameter
-    const newUrl = new URL(window.location.href);
-    newUrl.searchParams.set("jobId", item.id.toString());
-    router.push(newUrl.pathname + newUrl.search);
-
-    // Small delay to allow animation to start
-    setTimeout(() => {
-      setSelectedJob(item);
-      setJobId(item.id.toString());
-      setIsAnimating(false);
-    }, 300);
-  };
-
-  const SearchBar = () => (
-    <div style={{ width: 400 }}>
-      <ReactSearchAutocomplete
-        items={jobs}
-        onSelect={handleJobSelect}
-        autoFocus={!selectedJob}
-        placeholder="Search for a job"
-        formatResult={(item: any) => (
-          <span style={{ display: "block", textAlign: "left" }}>
-            {item.name}
-          </span>
-        )}
-      />
-    </div>
-  );
-
-  const LoadingSpinner = () => (
-    <div className="flex items-center justify-center">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-      <span className="ml-2">Loading jobs...</span>
-    </div>
-  );
-
-  useEffect(() => {
     async function refresh() {
       setIsLoadingCandidates(true);
       await refreshCandidates();
@@ -139,11 +85,11 @@ export default function Home() {
       {/* Header */}
       <header
         className={`transition-all duration-300 ease-in-out ${
-          selectedJob ? "flex items-center justify-between p-2" : "p-2"
+          jobId ? "flex items-center justify-between p-2" : "p-2"
         }`}
       >
         <h1 className="font-bold text-xl">Hothouse</h1>
-        {selectedJob && !isLoadingJobs && (
+        {jobId && (
           <div
             className={`transition-all duration-300 ease-in-out ${
               isAnimating
@@ -151,52 +97,40 @@ export default function Home() {
                 : "opacity-100 transform scale-100"
             }`}
           >
-            <SearchBar />
+            <JobSelectInput />
           </div>
         )}
       </header>
 
       {/* Main Content */}
       <main className="flex-1">
-        {!selectedJob && (
+        {!jobId && (
           <div className="flex items-center justify-center min-h-[calc(100vh-120px)]">
             <div className="text-center">
-              {isLoadingJobs ? (
-                <LoadingSpinner />
-              ) : (
-                <div
-                  className={`transition-all duration-300 ease-in-out ${
-                    isAnimating
-                      ? "opacity-50 transform scale-95"
-                      : "opacity-100 transform scale-100"
-                  }`}
-                >
-                  <div className="flex justify-center w-full m-12">
-                    <SearchBar />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                    {jobs.map((job) => (
-                      <a
-                        key={job.id}
-                        href={`/?jobId=${job.id}`}
-                        className="text-xs block cursor-pointer"
-                      >
-                        {job.name}
-                      </a>
-                    ))}
+              <div
+                className={`transition-all duration-300 ease-in-out ${
+                  isAnimating
+                    ? "opacity-50 transform scale-95"
+                    : "opacity-100 transform scale-100"
+                }`}
+              >
+                <div className="flex flex-col justify-center w-full m-12">
+                  <JobSelectInput />
+                  <div className="text-xs text-gray-500">
+                    eg: 2952722 or https://app.greenhouse.io/sdash/2952722
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           </div>
         )}
 
-        {selectedJob && (
+        {jobId && (
           <div className="p-4">
             <div className="mt-4 max-w-screen-lg mx-auto">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold">
-                  {candidates?.length || 0} {selectedJob.name} candidates
+                  {candidates?.length || 0} candidates
                 </h2>
                 <div className="flex gap-2">
                   <button

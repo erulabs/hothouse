@@ -214,6 +214,12 @@ export async function rate(t: Job) {
       });
     }
 
-    await setRating(id, newScore, { notes, github, linkedin, personalSite });
+    await setRating(id, newScore, {
+      name,
+      notes,
+      github,
+      linkedin,
+      personalSite,
+    });
   }
 }
