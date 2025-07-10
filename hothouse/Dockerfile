@@ -1,12 +1,21 @@
 # syntax=docker/dockerfile:1
 
-FROM node:24-bullseye-slim AS node-version
-ARG CACHEBUST
+# Base Node image with system packages (rarely changes)
+FROM node:24-bullseye-slim AS base-system
 RUN --mount=type=cache,target=/var/cache/apt,rw,sharing=locked \
   --mount=type=cache,target=/var/lib/apt,rw,sharing=locked \
   apt-get update -yqq && \
-  apt-get install -yqq bash curl netcat procps libreoffice
+  apt-get install -yqq bash curl netcat procps
 
+# LibreOffice layer (changes very rarely)
+FROM base-system AS libreoffice-layer
+RUN --mount=type=cache,target=/var/cache/apt,rw,sharing=locked \
+  --mount=type=cache,target=/var/lib/apt,rw,sharing=locked \
+  apt-get install -yqq libreoffice
+
+# Combined base for all subsequent stages
+FROM libreoffice-layer AS node-version
+ARG CACHEBUST
 
 FROM node-version AS deps
 WORKDIR /app
@@ -18,7 +27,6 @@ RUN --mount=type=cache,mode=0777,target=/home/node/.cache,uid=1000 \
   corepack enable && \
   corepack prepare && \
   yarn --immutable
-
 
 FROM node-version AS builder
 WORKDIR /app
@@ -33,14 +41,12 @@ RUN --mount=type=cache,mode=0777,target=/app/.next/cache,uid=1000 \
   NODE_ENV=$NODE_ENV \
   yarn build
 
-
 FROM deps AS dev
 ENV NODE_ENV=development \
     NEXT_TELEMETRY_DISABLED=1
 COPY --chown=node:node . .
 EXPOSE 3000
 ENTRYPOINT [ "./node_modules/.bin/next", "dev" ]
-
 
 FROM node-version AS runner
 WORKDIR /app

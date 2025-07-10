@@ -52,6 +52,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Docker image
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: ./hothouse
@@ -60,10 +61,20 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: |
+            type=gha,scope=buildkit-state
+            type=gha,scope=buildkit-base-system
+            type=gha,scope=buildkit-libreoffice
+            type=gha,scope=buildkit-deps
+          cache-to: |
+            type=gha,mode=max,scope=buildkit-state
+            type=gha,mode=max,scope=buildkit-base-system
+            type=gha,mode=max,scope=buildkit-libreoffice
+            type=gha,mode=max,scope=buildkit-deps
           secrets: |
             NODE_ENV=production
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
 
       - name: Generate artifact attestation
         if: github.event_name != 'pull_request'
