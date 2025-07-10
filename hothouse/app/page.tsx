@@ -1,7 +1,7 @@
 "use client";
 
 import { FaSync, FaTimes } from "react-icons/fa";
-import { useState, useEffect, Fragment } from "react";
+import { useState, useEffect, Fragment, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Table,
@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 export default function Home() {
   const [jobId, setJobId] = useState<string | null>(
     typeof window !== "undefined"
-      ? window.location.search.split("jobId=").pop()
+      ? window.location.search.split("jobId=").pop() || null
       : null,
   );
   const [candidateId, setCandidateId] = useState<string | null>(null);
@@ -61,7 +61,7 @@ export default function Home() {
     );
   };
 
-  const refreshCandidates = async () => {
+  const refreshCandidates = useCallback(async () => {
     if (!jobId) return;
     const response = await fetch(`/api/candidates?jobId=${jobId}`);
     const data = await response.json();
@@ -69,16 +69,30 @@ export default function Home() {
       throw new Error("Invalid response from API: " + JSON.stringify(data));
     }
     setCandidates(data.candidates);
-  };
+  }, [jobId]);
 
   useEffect(() => {
+    if (!jobId) return;
+
     async function refresh() {
       setIsLoadingCandidates(true);
       await refreshCandidates();
       setIsLoadingCandidates(false);
     }
+
+    // Initial fetch
     refresh();
-  }, [jobId]);
+
+    // Set up auto-refresh every 30 seconds
+    const intervalId = setInterval(async () => {
+      await refreshCandidates();
+    }, 30000);
+
+    // Cleanup interval on component unmount or when jobId changes
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [jobId, refreshCandidates]);
 
   return (
     <div className="min-h-screen">
@@ -145,7 +159,6 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => {
-                      setSelectedJob(null);
                       setJobId(null);
                     }}
                     className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 cursor-pointer"
@@ -198,9 +211,30 @@ export default function Home() {
                           </button>
                           <button
                             type="button"
-                            className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 cursor-pointer"
+                            onClick={() => {
+                              window.open(
+                                `https://app.greenhouse.io/people/${candidate.id}`,
+                                "_blank",
+                              );
+                            }}
+                            className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 cursor-pointer"
                           >
-                            Remove
+                            Greenhouse
+                          </button>
+                          <button
+                            type="button"
+                            className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 cursor-pointer"
+                            onClick={async () => {
+                              await fetch(
+                                `/api/pass?jobId=${jobId}&candidateId=${candidate.id}`,
+                                { method: "POST" },
+                              );
+                              setCandidates(
+                                candidates.filter((c) => c.id !== candidate.id),
+                              );
+                            }}
+                          >
+                            Pass
                           </button>
                         </TableCell>
                       </TableRow>
