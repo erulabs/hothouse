@@ -1,9 +1,10 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { logger } from "./logger";
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
 if (!ANTHROPIC_API_KEY) {
-  throw new Error(
+  logger.warn(
     "ANTHROPIC_API_KEY is not set. You can create a .env file with the key.",
   );
 }
