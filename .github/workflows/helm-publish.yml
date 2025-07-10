@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write  # needed to push to gh-pages
+  contents: write
   pages: write
   id-token: write
 
@@ -36,18 +36,87 @@ jobs:
         with:
           version: v3.14.0
 
-      - name: Prepare chart directory
+      - name: Lint and package chart
         run: |
-          mkdir -p charts
-          cp -r chart charts/hothouse
+          # Lint the chart first
+          helm lint ./chart/
+          
+          # Create packages directory
+          mkdir -p packages
+          
+          # Package the chart
+          helm package ./chart/ --destination packages/
+          
+          # List what we created
+          ls -la packages/
 
-      - name: Run chart-releaser
-        uses: helm/chart-releaser-action@v1.6.0
-        with:
-          charts_dir: charts
-          skip_existing: true
-        env:
-          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+      - name: Create repository index
+        run: |
+          # Create the helm repository index
+          helm repo index packages/ --url https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+          
+          # Show the generated index
+          cat packages/index.yaml
+
+      - name: Create Pages content
+        run: |
+          # Create a simple HTML index page
+          cat > packages/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <title>Hothouse Helm Repository</title>
+              <style>
+                  body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; }
+                  h1 { color: #333; }
+                  .command { background: #f4f4f4; padding: 15px; border-radius: 5px; font-family: monospace; margin: 10px 0; }
+                  .file-list { margin-top: 20px; }
+                  .file-list a { display: block; margin: 5px 0; padding: 5px; background: #f9f9f9; text-decoration: none; border-radius: 3px; }
+                  .file-list a:hover { background: #e9e9e9; }
+              </style>
+          </head>
+          <body>
+              <h1>🏠 Hothouse Helm Repository</h1>
+              <p>Welcome to the Hothouse Helm chart repository. This repository contains Kubernetes deployment charts for the Hothouse application.</p>
+              
+              <h2>📦 Usage</h2>
+              <p>Add this repository to your Helm installation:</p>
+              <div class="command">helm repo add hothouse https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/</div>
+              
+              <p>Update your repositories:</p>
+              <div class="command">helm repo update</div>
+              
+              <p>Install the chart:</p>
+              <div class="command">helm install my-hothouse hothouse/hothouse</div>
+              
+              <p>Or install with custom values:</p>
+              <div class="command">helm install my-hothouse hothouse/hothouse --set image.tag=latest</div>
+              
+              <h2>📁 Repository Files</h2>
+              <div class="file-list">
+                  <a href="index.yaml">📄 index.yaml</a>
+          EOF
+          
+          # Add links to all .tgz files
+          for file in packages/*.tgz; do
+              if [ -f "$file" ]; then
+                  filename=$(basename "$file")
+                  echo "                  <a href=\"$filename\">📦 $filename</a>" >> packages/index.html
+              fi
+          done
+          
+          # Close the HTML
+          cat >> packages/index.html << 'EOF'
+              </div>
+              
+              <h2>🔗 Links</h2>
+              <ul>
+                  <li><a href="https://github.com/${{ github.repository }}" target="_blank">GitHub Repository</a></li>
+                  <li><a href="https://helm.sh/" target="_blank">Helm Documentation</a></li>
+              </ul>
+          </body>
+          </html>
+          EOF
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -55,8 +124,8 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.cr-release-packages'
+          path: 'packages'
 
-      - name: Deploy to GitHub Pages  
+      - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4 
