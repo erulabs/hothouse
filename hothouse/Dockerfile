@@ -27,18 +27,9 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
 COPY --from=deps /app/node_modules ./node_modules
 COPY --chown=node:node . .
 RUN --mount=type=cache,mode=0777,target=/app/.next/cache,uid=1000 \
-  --mount=type=secret,id=NEXT_PUBLIC_APP_ENV,env=NEXT_PUBLIC_APP_ENV \
-  --mount=type=secret,id=NEXT_PUBLIC_APP_BUILD_ID,env=NEXT_PUBLIC_APP_BUILD_ID \
-  --mount=type=secret,id=NEXT_PUBLIC_STATIC_ASSET_PATH,env=NEXT_PUBLIC_STATIC_ASSET_PATH \
   --mount=type=secret,id=NODE_ENV,env=NODE_ENV \
-  echo "NEXT_PUBLIC_APP_ENV: $NEXT_PUBLIC_APP_ENV" && \
-  echo "NEXT_PUBLIC_APP_BUILD_ID: $NEXT_PUBLIC_APP_BUILD_ID" && \
-  echo "NEXT_PUBLIC_STATIC_ASSET_PATH: $NEXT_PUBLIC_STATIC_ASSET_PATH" && \
   corepack enable && \
   corepack prepare && \
-  NEXT_PUBLIC_APP_ENV=$NEXT_PUBLIC_APP_ENV \
-  NEXT_PUBLIC_APP_BUILD_ID=$NEXT_PUBLIC_APP_BUILD_ID \
-  NEXT_PUBLIC_STATIC_ASSET_PATH=$NEXT_PUBLIC_STATIC_ASSET_PATH \
   NODE_ENV=$NODE_ENV \
   yarn build
 
