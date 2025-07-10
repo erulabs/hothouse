@@ -73,6 +73,7 @@ jobs:
             type=gha,mode=max,scope=buildkit-deps
           secrets: |
             NODE_ENV=production
+            NEXT_PUBLIC_APP_BUILD_ID=${{ github.sha }}
           build-args: |
             BUILDKIT_INLINE_CACHE=1
 

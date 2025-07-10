@@ -36,9 +36,10 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --chown=node:node . .
 RUN --mount=type=cache,mode=0777,target=/app/.next/cache,uid=1000 \
   --mount=type=secret,id=NODE_ENV,env=NODE_ENV \
+  --mount=type=secret,id=NEXT_PUBLIC_APP_BUILD_ID,env=NEXT_PUBLIC_APP_BUILD_ID \
   corepack enable && \
   corepack prepare && \
-  NODE_ENV=$NODE_ENV \
+  NODE_ENV=$NODE_ENV NEXT_PUBLIC_APP_BUILD_ID=$NEXT_PUBLIC_APP_BUILD_ID \
   yarn build
 
 FROM deps AS dev
