@@ -2,7 +2,6 @@
 
 import { FaSync, FaTimes } from "react-icons/fa";
 import { useState, useEffect, Fragment, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import {
   Table,
   TableBody,
@@ -19,18 +18,22 @@ export default function Home() {
       ? window.location.search.split("jobId=").pop() || null
       : null,
   );
-  const [candidateId, setCandidateId] = useState<string | null>(null);
-  const [refresh, setRefresh] = useState<boolean>(false);
-  const [isAnimating, setIsAnimating] = useState<boolean>(false);
-  const [candidates, setCandidates] = useState<any[]>([]);
-  const [isLoadingCandidates, setIsLoadingCandidates] = useState<boolean>(true);
-  const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
 
-  const handleDownload = async () => {
-    await fetch(`/api/download?jobId=${jobId}&candidateId=${candidateId}`, {
-      method: "POST",
-    });
+  type Candidate = {
+    id: string;
+    name: string;
+    score: number;
+    notes: string;
+    github: string;
+    linkedin: string;
+    personalSite: string;
   };
+
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [isLoadingCandidates, setIsLoadingCandidates] = useState<boolean>(true);
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(
+    null,
+  );
 
   const JobSelectInput = () => (
     <Input
@@ -45,21 +48,6 @@ export default function Home() {
       placeholder="Search for a job"
     />
   );
-
-  const handleRate = async () => {
-    if (!jobId && !candidateId) return;
-    await fetch(
-      `/api/rate` +
-        new URLSearchParams({
-          jobId: jobId || "",
-          candidateId: candidateId || "",
-          refresh: refresh ? "true" : "",
-        }),
-      {
-        method: "POST",
-      },
-    );
-  };
 
   const refreshCandidates = useCallback(async () => {
     if (!jobId) return;
@@ -105,11 +93,7 @@ export default function Home() {
         <h1 className="font-bold text-xl">Hothouse</h1>
         {jobId && (
           <div
-            className={`transition-all duration-300 ease-in-out ${
-              isAnimating
-                ? "opacity-50 transform scale-95"
-                : "opacity-100 transform scale-100"
-            }`}
+            className={`transition-all duration-300 ease-in-out opacity-100 transform scale-100`}
           >
             <JobSelectInput />
           </div>
@@ -122,11 +106,7 @@ export default function Home() {
           <div className="flex items-center justify-center min-h-[calc(100vh-120px)]">
             <div className="text-center">
               <div
-                className={`transition-all duration-300 ease-in-out ${
-                  isAnimating
-                    ? "opacity-50 transform scale-95"
-                    : "opacity-100 transform scale-100"
-                }`}
+                className={`transition-all duration-300 ease-in-out opacity-100 transform scale-100`}
               >
                 <div className="flex flex-col justify-center w-full m-12">
                   <JobSelectInput />
@@ -240,31 +220,35 @@ export default function Home() {
                       </TableRow>
                       {selectedCandidate === candidate && (
                         <Fragment key={candidate.id}>
-                          {["notes", "github", "linkedin", "personalSite"].map(
-                            (key) => (
-                              <TableRow
-                                key={candidate.id + key}
-                                className="bg-gray-100"
+                          {(
+                            [
+                              "notes",
+                              "github",
+                              "linkedin",
+                              "personalSite",
+                            ] as const
+                          ).map((key) => (
+                            <TableRow
+                              key={candidate.id + key}
+                              className="bg-gray-100"
+                            >
+                              <TableCell>{key}</TableCell>
+                              <TableCell></TableCell>
+                              <TableCell
+                                colSpan={3}
+                                className="max-w-[500px] overflow-x-auto whitespace-pre-wrap"
                               >
-                                <TableCell>{key}</TableCell>
-                                <TableCell></TableCell>
-                                <TableCell
-                                  colSpan={3}
-                                  className="max-w-[500px] overflow-x-auto whitespace-pre-wrap"
-                                >
-                                  {candidate[key] &&
-                                  candidate[key].startsWith("http") ? (
-                                    <a href={candidate[key]} target="_blank">
-                                      {candidate[key]}
-                                    </a>
-                                  ) : (
-                                    candidate[key] || "-"
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            ),
-                          )}
-                          <TableRow key={candidate.id + "spacer"}>
+                                {candidate[key]?.startsWith("http") ? (
+                                  <a href={candidate[key]} target="_blank">
+                                    {candidate[key]}
+                                  </a>
+                                ) : (
+                                  candidate[key] || "-"
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                          <TableRow key={`${candidate.id}spacer`}>
                             <TableCell colSpan={3} className="h-1"></TableCell>
                           </TableRow>
                         </Fragment>

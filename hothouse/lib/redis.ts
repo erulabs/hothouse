@@ -81,21 +81,24 @@ function redis(target: keyof typeof redises, forceNew = false): Redis {
         reconnectOnError: () => false,
       });
     }
-    handle.on("error", (err) => {
-      if (
-        (err.message === "Connection is closed." ||
-          err.code === "ECONNREFUSED") &&
-        process.env.NODE_ENV === "development"
-      ) {
-        logger.warn("Redis not ready...");
-        return;
-      }
-      logger.error("Redis error: ", {
-        code: err.code,
-        syscall: err.syscall,
-        servers: redises[target].servers,
-      });
-    });
+    handle.on(
+      "error",
+      (err: { message: string; code: string; syscall: string }) => {
+        if (
+          (err.message === "Connection is closed." ||
+            err.code === "ECONNREFUSED") &&
+          process.env.NODE_ENV === "development"
+        ) {
+          logger.warn("Redis not ready...");
+          return;
+        }
+        logger.error("Redis error: ", {
+          code: err.code,
+          syscall: err.syscall,
+          servers: redises[target].servers,
+        });
+      },
+    );
     // @ts-expect-error waitForReady is not defined on Redis
     handle.waitForReady = () => {
       return new Promise((resolve, reject) => {
@@ -143,8 +146,8 @@ function disconnectRedis() {
 }
 
 const redisPublisher = redis("GENERAL", true);
-async function publishEvent(eventName: string, event: any) {
-  event.publishDate = new Date().getTime();
+async function publishEvent(eventName: string, event: { publishDate: number }) {
+  event.publishDate = Date.now();
   redisPublisher?.publish(eventName, JSON.stringify(event));
 }
 

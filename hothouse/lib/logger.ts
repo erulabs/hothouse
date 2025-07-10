@@ -11,18 +11,16 @@ let loggingFormat = format.combine(
   format.label({ label: LOGGING_LABEL }),
   format.label({ label: APP_ENV }),
   format.json({
-    replacer: (
-      key: string,
-      value: { name: string; message: string; stack: string; cause: unknown },
-    ) => {
+    replacer: (_key: string, value: unknown) => {
       if (value instanceof Buffer) {
         return value.toString("base64");
       } else if (value?.constructor.name === "Error") {
+        const errorValue = value as Error;
         return {
-          name: value.name,
-          message: value.message,
-          stack: value.stack,
-          cause: value.cause,
+          name: errorValue.name,
+          message: errorValue.message,
+          stack: errorValue.stack,
+          cause: (errorValue as Error).cause,
         };
       }
       return value;
@@ -46,18 +44,8 @@ if (PLAINTEXT_LOGGING || process.env.NODE_ENV === "development") {
     delete c.level;
     delete c.message;
     delete c.timestamp;
-    function convertToJson(
-      set: Record<
-        string,
-        {
-          name: string;
-          message: string;
-          stack: string;
-          cause: unknown;
-          toJSON: unknown;
-        }
-      >,
-    ) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    function convertToJson(set: Record<string, any>) {
       for (const key in set) {
         if (set[key]?.constructor?.name === "Error") {
           set[key] = {
@@ -74,7 +62,6 @@ if (PLAINTEXT_LOGGING || process.env.NODE_ENV === "development") {
         ) {
           set[key] = set[key].toJSON();
         } else if (set[key] && Array.isArray(set[key])) {
-          // @ts-expect-error - cant figure this one out!
           convertToJson(set[key]);
         }
       }
@@ -100,20 +87,24 @@ export const logger = createLogger({
   transports: loggingTransports,
 });
 
-export const logOnlyInProduction = function (
+export const logOnlyInProduction = (
   loggerFunc: string = "info",
-  ...args: any[]
-) {
+  ...args: unknown[]
+) => {
   Array.prototype.shift.apply(args);
-  if (process.env.NODE_ENV !== "development")
+  if (process.env.NODE_ENV !== "development") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (logger as any)[loggerFunc](...args);
+  }
 };
 
-export const logOnlyInDevelopment = function (
+export const logOnlyInDevelopment = (
   loggerFunc: string = "info",
-  ...args: any[]
-) {
+  ...args: unknown[]
+) => {
   Array.prototype.shift.apply(args);
-  if (process.env.NODE_ENV === "development")
+  if (process.env.NODE_ENV === "development") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (logger as any)[loggerFunc](...args);
+  }
 };

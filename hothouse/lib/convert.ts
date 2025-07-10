@@ -2,6 +2,7 @@ import { finished } from "node:stream/promises";
 import { createWriteStream } from "node:fs";
 import fs from "node:fs/promises";
 import { Readable } from "node:stream";
+import type { ReadableStream } from "node:stream/web";
 import util from "node:util";
 import path from "node:path";
 import { exec } from "node:child_process";
@@ -11,7 +12,11 @@ import { logger } from "./logger";
 
 const asyncExec = util.promisify(exec);
 
-export async function convert(candidateId: string, file: any, type: string) {
+export async function convert(
+  candidateId: string,
+  file: { url: string },
+  type: string,
+) {
   const url = file.url;
   const parsedUrl = new URL(url);
   let extension = parsedUrl.pathname.split(".").pop();
@@ -25,7 +30,9 @@ export async function convert(candidateId: string, file: any, type: string) {
 
   logger.debug("download: downloading", { filename });
   await finished(
-    Readable.fromWeb(response.body).pipe(createWriteStream(filename)),
+    Readable.fromWeb(response.body as ReadableStream).pipe(
+      createWriteStream(filename),
+    ),
   );
 
   const pageFilenames: string[] = [];

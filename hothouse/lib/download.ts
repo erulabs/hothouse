@@ -26,7 +26,7 @@ export async function downloadCandidates(t: Job) {
       break;
     }
     const applications = applicationsJson.filter(
-      (a: any) =>
+      (a: { prospect: boolean; rejected_at: string | null; status: string }) =>
         a.prospect === false && a.rejected_at === null && a.status === "active",
     );
     let candidatesAdded = 0;

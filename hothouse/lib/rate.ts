@@ -25,7 +25,7 @@ export async function rate(t: Job) {
 
   logger.info("rate: start", { jobId, candidateId, refresh });
 
-  async function setRating(id: string, score: number, data: any) {
+  async function setRating(id: string, score: number, data: object) {
     await db.zadd(`candidates:${jobId}`, score, id);
     await db.set(
       `candidate:${jobId}:${id}`,
@@ -47,7 +47,7 @@ export async function rate(t: Job) {
     }
   }
 
-  let rows: any[] = [];
+  let rows: string[] = [];
   if (candidateId) {
     rows = [candidateId];
   } else {
@@ -83,7 +83,19 @@ export async function rate(t: Job) {
       continue;
     }
 
-    let candidateDetailsJson: any;
+    type attachment = {
+      type: string;
+      url: string;
+    };
+    type application = {
+      status: string;
+      attachments: attachment[];
+    };
+    let candidateDetailsJson: {
+      first_name: string;
+      last_name: string;
+      applications: application[];
+    };
     const cachedCandidateDetails = await db.get(`candidateDetails:${id}`);
     if (cachedCandidateDetails) {
       candidateDetailsJson = JSON.parse(cachedCandidateDetails);
@@ -100,7 +112,7 @@ export async function rate(t: Job) {
     const name = `${candidateDetailsJson.first_name} ${candidateDetailsJson.last_name}`;
 
     const openApplication = (candidateDetailsJson.applications || []).find(
-      (a: any) => a.status === "active",
+      (a: application) => a.status === "active",
     );
     const attachments = openApplication?.attachments;
 
@@ -141,29 +153,29 @@ export async function rate(t: Job) {
 
     const messages = [
       {
-        role: "user",
+        role: "user" as const,
         content: `Rate the attached resume and optional cover letter for the following job post:`,
       },
       {
-        role: "user",
-        content: [{ type: "text", text: jobPostDescription }],
+        role: "user" as const,
+        content: [{ type: "text" as const, text: jobPostDescription || "" }],
       },
       {
-        role: "user",
+        role: "user" as const,
         content: await Promise.all(
           pageFilenames.map(async (page: string) => {
             return {
-              type: "image",
+              type: "image" as const,
               source: {
-                type: "base64",
-                media_type: "image/png",
+                type: "base64" as const,
+                media_type: "image/png" as const,
                 data: await fs.readFile(page, "base64"),
               },
             };
           }),
         ),
       },
-      { role: "assistant", content: "{" },
+      { role: "assistant" as const, content: "{" },
     ];
 
     logger.debug("rate: rating", {
@@ -190,7 +202,7 @@ export async function rate(t: Job) {
       github,
       linkedin,
       personalSite,
-    } = JSON.parse(`{${response.content[0].text}`);
+    } = JSON.parse(`{${(response.content[0] as { text: string }).text}`);
 
     if (score === null) {
       logger.info("rate: rating", {
